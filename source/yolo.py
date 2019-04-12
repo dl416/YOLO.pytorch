@@ -42,31 +42,33 @@ class yoloLoss(nn.Module):
         label = label.reshape(-1, 25)
         predict = predict.reshape(-1, 30)
 
-        obj_mask = label[:, 20] > 0.8
-        p1_mask = predict[:, 20] > 0.8
-        p2_mask = predict[:, 25] > 0.8
+        obj_mask = label[:, 20] >= 0.9
+        noobj_mask = label[:, 20] < 0.9
 
-        mask1 = obj_mask + p1_mask
-        mask2 = obj_mask + p2_mask
-
-        label_mask = label[mask1]
-        predict_mask = predict[mask1][:, 21:22]
-
-        # p2_mask = label[:, :25] > 0.8
 
         # x and y
-        location_loss_1 = torch.sum(torch.pow(label[mask1][:, 21:23] - predict[mask1][:, 21:23], 2))
-        location_loss_2 = torch.sum(torch.pow(label[mask2][:, 21:23] - predict[mask2][:, 26:28], 2))
-        location_loss = location_loss_1 + location_loss_2
+        location_loss_1 = torch.sum(torch.pow(label[obj_mask][:, 21:23] - predict[obj_mask][:, 21:23], 2))
+        location_loss_2 = torch.sum(torch.pow(label[obj_mask][:, 21:23] - predict[obj_mask][:, 26:28], 2))
 
         # h and w
         # ? miss sqrt
-        location_loss_3 = torch.sum(torch.pow(label[mask1][:, 23:25] - predict[mask1][:, 23:25], 2))
-        location_loss_4 = torch.sum(torch.pow(label[mask1][:, 23:25] - predict[mask1][:, 28:], 2))
-        location_loss += location_loss_3 + location_loss_4
-        print(location_loss)
+        location_loss_3 = torch.sum(torch.pow(label[obj_mask][:, 23:25] - predict[obj_mask][:, 23:25], 2))
+        location_loss_4 = torch.sum(torch.pow(label[obj_mask][:, 23:25] - predict[obj_mask][:, 28:], 2))
+        location_loss = location_loss_1 + location_loss_2 + location_loss_3 + location_loss_4
 
+        # is object
+        object_loss_1 = torch.sum(torch.pow(label[obj_mask][:, 20] - predict[obj_mask][:, 20], 2))
+        object_loss_2 = torch.sum(torch.pow(label[obj_mask][:, 20] - predict[obj_mask][:, 25], 2))
+        object_loss = object_loss_1 + object_loss_2
 
+        noobject_loss_1 = torch.sum(torch.pow(label[noobj_mask][:, 20] - predict[noobj_mask][:, 20], 2))
+        noobject_loss_2 = torch.sum(torch.pow(label[noobj_mask][:, 20] - predict[noobj_mask][:, 25], 2))
+        noobject_loss = noobject_loss_1 + noobject_loss_2
+
+        class_loss = torch.sum(torch.pow(label[obj_mask][:, :20] - predict[obj_mask][:, :20], 2))
+
+        total_loss = self.l_coord * location_loss + object_loss + self.l_noobj * noobject_loss + class_loss
+        return total_loss
 
 if __name__ == '__main__':
     yolo = YOLO()
