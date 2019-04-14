@@ -30,13 +30,18 @@ classes_dic = {
 
 class Voc17(Dataset):
     trainset_path = "./ImageSets/Main/train.txt"
+    testset_path = "./ImageSets/Main/test.txt"
     image_path = "./JPEGImages/"
     label_path = "./Annotations/"
-    def __init__(self, voc_dir="/home/l/Desktop/yucheng/data/VOCdevkit/VOC2007/", is_train=True):
+    def __init__(self, voc_dir="/home/l/data/VOCdevkit/VOC2007/", is_train=True, transform=None):
         self.voc_dir = voc_dir
-        self.trainset_path = os.path.join(voc_dir, self.trainset_path)
+        if is_train:
+            self.trainset_path = os.path.join(voc_dir, self.trainset_path)
+        else:
+            self.trainset_path = os.path.join(voc_dir, self.testset_path)
         with open(self.trainset_path) as f:
             self.data = f.readlines()
+        self.transform = transform
         
     def __len__(self):
         return len(self.data)
@@ -51,7 +56,9 @@ class Voc17(Dataset):
         image = np.array(image)
         if (image.shape) == 2:
             image = np.tile(image, (1, 1, 3))
-        image = image.transpose((2, 0, 1))
+        if self.transform:
+            image = self.transform(image)
+        #image = image.permute(1, 2, 0)
 
         # read bbox
         # 前20保存类别， 后5个保存坐标
@@ -86,6 +93,7 @@ class Voc17(Dataset):
         sample = {
             'label': label,
             'image': image,
+            #'origin': [Image.open(image_path)]
         }
         return sample
     
